@@ -1,5 +1,8 @@
 
-var saveButton, forkButton, parentButton, diffButton;
+
+initialize('hqD9IMTNsFSk2LxbiFnBEvCp-gzGzoHsz','ITs4Ni1EiEI5sEcQQ4CBJqpb');
+
+var saveButton, forkButton, parentButton, diffButton,tagInput;
 var effect_owner=false;
 var original_code='';
 var original_version='';
@@ -33,16 +36,12 @@ function am_i_owner() {
 	return (effect_owner && effect_owner==get_user_id());
 }
 
-function load_url_code() {
-	if ( window.location.hash!='') {
-
-		load_code(window.location.hash.substr(1));
-
+function load_url_code(id) {
+	if ( id!='') {
+		load_code(id);
 	} else {
-
 		code.setValue(document.getElementById( 'example' ).text);
 		original_code = document.getElementById( 'example' ).text;
-
 	}
 }
 
@@ -53,35 +52,32 @@ function add_server_buttons() {
 	saveButton.addEventListener( 'click', save, false );
 	toolbar.appendChild( saveButton );
 
-	parentButton = document.createElement( 'a' );
-	parentButton.style.visibility = 'hidden';
-	parentButton.textContent = 'parent';
-	parentButton.href = original_version;
-	toolbar.appendChild( parentButton );
-
-	diffButton = document.createElement( 'a' );
-	diffButton.style.visibility = 'hidden';
-	diffButton.textContent = 'diff';
-	diffButton.href = '/';
-	toolbar.appendChild( diffButton );
+    tagInput = document.createElement('input');
+    tagInput.style.visibility = 'visible';
+    tagInput.id = 'tags_input';
+    toolbar.appendChild(tagInput);
 
 	set_parent_button('visible');
 }
 
 function set_save_button(visibility) {
-	if(original_code==code.getValue())
+	if(original_code==code.getValue()){
 		saveButton.style.visibility = 'hidden';
-	else
+		tagInput.style.visibility = 'hidden';
+    }
+	else{
 		saveButton.style.visibility = visibility;
+		tagInput.style.visibility = visibility;
+    }
 }
 
 function set_parent_button(visibility) {
 	if(original_version=='') {
-		parentButton.style.visibility = 'hidden';
-		diffButton.style.visibility = 'hidden';
+		//parentButton.style.visibility = 'hidden';
+		//diffButton.style.visibility = 'hidden';
 	} else {
-		parentButton.style.visibility = visibility;
-		diffButton.style.visibility = visibility;
+		//parentButton.style.visibility = visibility;
+		//diffButton.style.visibility = visibility;
 	}
 }
 
@@ -121,16 +117,19 @@ function save() {
 	else {
 		data["parent"]=window.location.hash.substr(1);
 	}
-
-	$.post(loc,
-		JSON.stringify(data),
-		function(result) {
-			window.location.replace('/e#'+result);
-			load_url_code();
-		}, "text");
+  var data= {"tags":document.getElementById('tags_input').value,"snapshot":img,"code":code.getValue(), "author":''};
+  createTableItem('glsl', data, 
+				function(table, obj)
+				{
+					alert("新文章发表成功");
+				},
+				function(table, error)
+				{
+				    alert("发生错误:" + error.message);
+				},[],[currentUser().id]);    
 }
 
-function load_code(hash) {
+function load_code(id) {
 	if (gl) {
 		compileButton.title = '';
 		compileButton.style.color = '#ffff00';
@@ -138,30 +137,12 @@ function load_code(hash) {
 	}
 	set_save_button('hidden');
 	set_parent_button('hidden');
-
-	$.getJSON('/item/'+hash, function(result) {
+    var query = new AV.Query('glsl');
+    query.get(id).then(function (tobj) {
+	
 		compileOnChangeCode = false;  // Prevent compile timer start
-		code.setValue(result['code']);
+		code.setValue(tobj.get('code'));
 		original_code=code.getValue();
-
-		if(result['parent']) {
-			original_version=result['parent'];
-			parentButton.href = original_version;
-			diffButton.href = 'diff#' + original_version.substring(3) + '-vs-' + hash;
-			set_parent_button('visible');
-		} else {
-			original_version='';
-			parentButton.href = '/';
-			diffButton.href = '/';
-			set_parent_button('hidden');
-		}
-
-		effect_owner=result['user'];
-
-		if(am_i_owner())
-			saveButton.textContent = 'save';
-		else
-			saveButton.textContent = 'fork';
 
 		resetSurface();
 		compile();
@@ -173,3 +154,4 @@ function load_code(hash) {
 
 function setURL(fragment) {
 }
+
